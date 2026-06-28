@@ -58,6 +58,51 @@ def build_vit_scratch(num_classes: int = 10, img_size: int = 224) -> nn.Module:
     return model
 
 
+def build_vit_pretrained(num_classes: int = 10, img_size: int = 224) -> nn.Module:
+    """
+    Build a ViT-Tiny initialized with ImageNet-pretrained weights, ready
+    for fine-tuning on our small dataset.
+
+    Why this is expected to perform best: pretraining on ImageNet (1000
+    classes, ~1.3 million images) lets the model learn general-purpose
+    visual features -- edges, textures, shapes, object parts -- *before*
+    it ever sees our small dataset. Fine-tuning then only has to adapt
+    those already-useful features to our 10 classes, which needs far less
+    data than learning everything from zero. This is the core argument for
+    why "data-efficiency" in ViTs comes from transfer learning, not from
+    the from-scratch architecture being data-efficient on its own.
+
+    NOTE: this downloads pretrained weights from the internet the first
+    time it runs (a few tens of MB) and is the most compute-hungry of the
+    three models per epoch (transformer attention is more expensive than
+    convolution at this image resolution). Strongly recommend a GPU for
+    fine-tuning this model -- it will be noticeably slow on CPU.
+
+    Parameters
+    ----------
+    num_classes : int
+        Number of output classes (10 for CIFAR-10).
+    img_size : int
+        Input image side length, should match the data pipeline (224).
+
+    Returns
+    -------
+    nn.Module
+        `vit_tiny_patch16_224` with ImageNet-pretrained weights loaded and
+        its classification head replaced/resized for `num_classes`. All
+        parameters remain trainable (full fine-tuning) -- timm handles
+        resizing the head automatically when num_classes differs from
+        ImageNet's 1000.
+    """
+    model = timm.create_model(
+        "vit_tiny_patch16_224",
+        pretrained=True,
+        num_classes=num_classes,
+        img_size=img_size,
+    )
+    return model
+
+
 def build_cnn(num_classes: int = 10, pretrained: bool = False) -> nn.Module:
     """
     Build a ResNet-18 CNN baseline.
@@ -131,3 +176,9 @@ if __name__ == "__main__":
     logits = vit_scratch(dummy_images)
     print(f"ViT-scratch output shape: {logits.shape}")  # expect [2, 10]
     print(f"ViT-scratch parameters: {count_parameters(vit_scratch)}")
+
+    # NOTE: this downloads pretrained weights on first run -- needs internet.
+    vit_pretrained = build_vit_pretrained(num_classes=10, img_size=224)
+    logits = vit_pretrained(dummy_images)
+    print(f"ViT-pretrained output shape: {logits.shape}")  # expect [2, 10]
+    print(f"ViT-pretrained parameters: {count_parameters(vit_pretrained)}")
