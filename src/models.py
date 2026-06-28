@@ -13,6 +13,41 @@ with a standard nn.Module interface (forward(images) -> logits).
 """
 
 import torch.nn as nn
+import torchvision.models as tv_models
+
+
+def build_cnn(num_classes: int = 10, pretrained: bool = False) -> nn.Module:
+    """
+    Build a ResNet-18 CNN baseline.
+
+    Parameters
+    ----------
+    num_classes : int
+        Number of output classes (10 for CIFAR-10).
+    pretrained : bool
+        If False (the default for this project), weights are randomly
+        initialized -- the CNN trains from scratch on the small dataset,
+        just like the from-scratch ViT. This keeps the comparison fair:
+        any performance gap between the CNN and ViT-scratch is then
+        attributable to architecture (convolutional inductive bias), not
+        to one model getting a head start from pretraining.
+        Set True only if you want a pretrained-CNN side-experiment.
+
+    Returns
+    -------
+    nn.Module
+        ResNet-18 with its final fully-connected layer replaced to output
+        `num_classes` logits instead of ImageNet's 1000.
+    """
+    weights = tv_models.ResNet18_Weights.DEFAULT if pretrained else None
+    model = tv_models.resnet18(weights=weights)
+
+    # ResNet-18's classifier head is `model.fc`, a single Linear layer.
+    # We replace it so the output dimension matches our number of classes.
+    in_features = model.fc.in_features
+    model.fc = nn.Linear(in_features, num_classes)
+
+    return model
 
 
 def count_parameters(model: nn.Module) -> dict:
@@ -41,5 +76,10 @@ def count_parameters(model: nn.Module) -> dict:
 
 
 if __name__ == "__main__":
-    # Placeholder smoke test -- will exercise real builders once they exist.
-    print("src/models.py loaded successfully. Builders coming next.")
+    import torch
+
+    cnn = build_cnn(num_classes=10, pretrained=False)
+    dummy_images = torch.randn(2, 3, 224, 224)  # batch of 2 fake RGB images
+    logits = cnn(dummy_images)
+    print(f"CNN output shape: {logits.shape}")  # expect [2, 10]
+    print(f"CNN parameters: {count_parameters(cnn)}")
