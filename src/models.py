@@ -137,6 +137,48 @@ def build_cnn(num_classes: int = 10, pretrained: bool = False) -> nn.Module:
     return model
 
 
+# Human-readable names -> builder functions. This is the single switchboard
+# the rest of the codebase (training, evaluation, notebook) should use --
+# add a new model here and everything downstream picks it up automatically.
+MODEL_REGISTRY = {
+    "vit_scratch": build_vit_scratch,
+    "cnn": build_cnn,
+    "vit_pretrained": build_vit_pretrained,
+}
+
+
+def build_model(name: str, num_classes: int = 10, img_size: int = 224) -> nn.Module:
+    """
+    Unified model factory -- mirrors the pattern used by get_dataset() in
+    src/data.py, so training/evaluation code can stay agnostic about which
+    of the three models it's dealing with.
+
+    Parameters
+    ----------
+    name : str
+        One of "vit_scratch", "cnn", "vit_pretrained" (see MODEL_REGISTRY).
+    num_classes : int
+        Number of output classes.
+    img_size : int
+        Input image side length. Ignored by build_cnn (ResNet-18 works at
+        any resolution) but required by the ViT builders.
+
+    Returns
+    -------
+    nn.Module
+    """
+    name = name.lower()
+    if name not in MODEL_REGISTRY:
+        raise ValueError(
+            f"Unknown model '{name}'. Choose from {list(MODEL_REGISTRY)}."
+        )
+
+    builder = MODEL_REGISTRY[name]
+    if builder is build_cnn:
+        return builder(num_classes=num_classes)
+    return builder(num_classes=num_classes, img_size=img_size)
+
+
 def count_parameters(model: nn.Module) -> dict:
     """
     Count total and trainable parameters in a model.
@@ -167,18 +209,9 @@ if __name__ == "__main__":
 
     dummy_images = torch.randn(2, 3, 224, 224)  # batch of 2 fake RGB images
 
-    cnn = build_cnn(num_classes=10, pretrained=False)
-    logits = cnn(dummy_images)
-    print(f"CNN output shape: {logits.shape}")  # expect [2, 10]
-    print(f"CNN parameters: {count_parameters(cnn)}")
-
-    vit_scratch = build_vit_scratch(num_classes=10, img_size=224)
-    logits = vit_scratch(dummy_images)
-    print(f"ViT-scratch output shape: {logits.shape}")  # expect [2, 10]
-    print(f"ViT-scratch parameters: {count_parameters(vit_scratch)}")
-
-    # NOTE: this downloads pretrained weights on first run -- needs internet.
-    vit_pretrained = build_vit_pretrained(num_classes=10, img_size=224)
-    logits = vit_pretrained(dummy_images)
-    print(f"ViT-pretrained output shape: {logits.shape}")  # expect [2, 10]
-    print(f"ViT-pretrained parameters: {count_parameters(vit_pretrained)}")
+    # Exercise every model through the single build_model() entry point --
+    # this is what training/evaluation code will actually call.
+    for model_name in MODEL_REGISTRY:
+        model = build_model(model_name, num_classes=10, img_size=224)
+        logits = model(dummy_images)
+        print(f"{model_name}: output shape={logits.shape}, params={count_parameters(model)}")
