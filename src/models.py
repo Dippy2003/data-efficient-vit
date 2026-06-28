@@ -12,8 +12,50 @@ model-agnostic: it just calls build_model(name) and gets back something
 with a standard nn.Module interface (forward(images) -> logits).
 """
 
+import timm
 import torch.nn as nn
 import torchvision.models as tv_models
+
+
+def build_vit_scratch(num_classes: int = 10, img_size: int = 224) -> nn.Module:
+    """
+    Build a Vision Transformer with NO pretrained weights -- it learns
+    everything, including basic visual structure, from our small dataset.
+
+    Why this is expected to underperform: a ViT first chops the image into
+    fixed-size patches (here 16x16) and treats them like a sequence of
+    "tokens", then uses self-attention to relate patches to each other. Self
+    -attention has no built-in notion that nearby pixels are usually related
+    (locality) or that shifting an object shouldn't change the label
+    (translation invariance) -- a CNN gets both for free from how
+    convolution kernels work. A ViT *can* learn these patterns, but only by
+    seeing enough examples; with a small dataset like a subset of CIFAR-10,
+    there typically isn't enough signal, so we expect this model to lag
+    behind the CNN baseline.
+
+    Parameters
+    ----------
+    num_classes : int
+        Number of output classes (10 for CIFAR-10).
+    img_size : int
+        Input image side length. Must match the size used by the data
+        pipeline (src/data.py uses 224 by default).
+
+    Returns
+    -------
+    nn.Module
+        A `vit_tiny_patch16_224` model (timm) with random initialization.
+        "Tiny" is chosen deliberately: it is the smallest standard ViT
+        variant, which keeps training time reasonable on a small dataset
+        and on modest hardware (including Colab's free GPU tier).
+    """
+    model = timm.create_model(
+        "vit_tiny_patch16_224",
+        pretrained=False,
+        num_classes=num_classes,
+        img_size=img_size,
+    )
+    return model
 
 
 def build_cnn(num_classes: int = 10, pretrained: bool = False) -> nn.Module:
@@ -78,8 +120,14 @@ def count_parameters(model: nn.Module) -> dict:
 if __name__ == "__main__":
     import torch
 
-    cnn = build_cnn(num_classes=10, pretrained=False)
     dummy_images = torch.randn(2, 3, 224, 224)  # batch of 2 fake RGB images
+
+    cnn = build_cnn(num_classes=10, pretrained=False)
     logits = cnn(dummy_images)
     print(f"CNN output shape: {logits.shape}")  # expect [2, 10]
     print(f"CNN parameters: {count_parameters(cnn)}")
+
+    vit_scratch = build_vit_scratch(num_classes=10, img_size=224)
+    logits = vit_scratch(dummy_images)
+    print(f"ViT-scratch output shape: {logits.shape}")  # expect [2, 10]
+    print(f"ViT-scratch parameters: {count_parameters(vit_scratch)}")
