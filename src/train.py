@@ -267,12 +267,19 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) ->
     """
     optimizer = get_optimizer(model_name, model)
 
+    # Cosine decay smoothly lowers the learning rate to ~0 by the final
+    # epoch. This is standard practice for both CNNs and ViTs: large steps
+    # early help escape poor initial regions of the loss landscape, smaller
+    # steps later help settle into a good minimum instead of overshooting it.
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+
     history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
     best_val_acc = 0.0
 
     for epoch in range(1, num_epochs + 1):
         train_result = train_one_epoch(model, loaders["train"], optimizer, device)
         val_result = evaluate(model, loaders["val"], device)
+        scheduler.step()
 
         history["train_loss"].append(train_result["loss"])
         history["train_acc"].append(train_result["accuracy"])
