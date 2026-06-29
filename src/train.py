@@ -7,6 +7,8 @@ model(images) and expects logits back, so the same training code works for
 the CNN and both ViT variants without special-casing.
 """
 
+import os
+
 import torch
 import torch.nn as nn
 
@@ -181,6 +183,33 @@ def get_optimizer(model_name: str, model: nn.Module) -> torch.optim.Optimizer:
         raise ValueError(f"Unknown model_name '{model_name}'.")
 
 
+def save_checkpoint(model: nn.Module, model_name: str, checkpoint_dir: str = "outputs/checkpoints") -> str:
+    """
+    Save the model's weights to disk.
+
+    Why we need this: training can take a while (especially the ViTs), and
+    we don't want to lose the best version of a model just because a later
+    epoch happened to overfit. Saving by `model_name` keeps the 3 models'
+    checkpoints separate so they don't overwrite each other.
+
+    Parameters
+    ----------
+    model : nn.Module
+    model_name : str
+        Used to build the filename, e.g. "cnn" -> "outputs/checkpoints/cnn_best.pth".
+    checkpoint_dir : str
+        Directory to save into; created if it doesn't exist.
+
+    Returns
+    -------
+    str : path the checkpoint was saved to.
+    """
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    path = os.path.join(checkpoint_dir, f"{model_name}_best.pth")
+    torch.save(model.state_dict(), path)
+    return path
+
+
 def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) -> dict:
     """
     Full training loop: runs `num_epochs` epochs, evaluating on the
@@ -210,6 +239,7 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) ->
     optimizer = get_optimizer(model_name, model)
 
     history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
+    best_val_acc = 0.0
 
     for epoch in range(1, num_epochs + 1):
         train_result = train_one_epoch(model, loaders["train"], optimizer, device)
@@ -225,6 +255,11 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) ->
             f"train_loss={train_result['loss']:.4f} train_acc={train_result['accuracy']:.4f} "
             f"val_loss={val_result['loss']:.4f} val_acc={val_result['accuracy']:.4f}"
         )
+
+        if val_result["accuracy"] > best_val_acc:
+            best_val_acc = val_result["accuracy"]
+            checkpoint_path = save_checkpoint(model, model_name)
+            print(f"[{model_name}] new best val_acc={best_val_acc:.4f}, saved to {checkpoint_path}")
 
     return history
 
