@@ -67,4 +67,28 @@ Two presets are defined at the top of `src/train.py`:
   a GPU is strongly recommended (Colab's free GPU runtime works fine).
 
 Quick manual check: `python -m src.train` runs a 2-epoch CNN training pass
-on a tiny subset and confirms checkpoint save/load works.
+on a tiny subset and confirms checkpoint save/load works. For a check that
+trains all 3 models together, run `python -m src.test_integration`.
+
+### Optimizer choices
+
+All 3 models use AdamW with a cosine learning-rate schedule, but the
+learning rate differs by model (`get_optimizer()` in `src/train.py`):
+
+| Model | LR | Why |
+|---|---|---|
+| `vit_scratch` | 1e-3 | must learn everything from zero, so it needs bigger steps |
+| `cnn` | 1e-3 | same reasoning — random init, no pretraining |
+| `vit_pretrained` | 1e-4 | fine-tuning should nudge pretrained weights gently, not overwrite them |
+
+### Model sizes
+
+| Model | Parameters |
+|---|---|
+| `vit_scratch` (ViT-Tiny) | ~5.5M |
+| `cnn` (ResNet-18) | ~11.2M |
+| `vit_pretrained` (ViT-Tiny) | ~5.5M |
+
+Note the from-scratch ViT is actually *smaller* than the CNN baseline, which
+is useful for the project's argument: any accuracy gap is about
+architecture/inductive bias, not raw model capacity.
