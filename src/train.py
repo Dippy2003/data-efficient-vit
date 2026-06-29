@@ -101,6 +101,50 @@ def train_one_epoch(model, loader, optimizer, device) -> dict:
     return {"loss": loss_meter.avg, "accuracy": acc_meter.avg}
 
 
+@torch.no_grad()
+def evaluate(model, loader, device) -> dict:
+    """
+    Run the model over `loader` without updating weights -- used both for
+    validation during training (to watch for overfitting) and for the
+    final test-set evaluation.
+
+    The @torch.no_grad() decorator disables gradient tracking, which is
+    unnecessary here and would otherwise waste memory and compute.
+
+    Parameters
+    ----------
+    model : nn.Module
+    loader : DataLoader
+        Should use the *non*-augmented transform (see src/data.py) -- we
+        want to measure real performance, not performance on randomly
+        perturbed images.
+    device : torch.device
+
+    Returns
+    -------
+    dict with keys "loss" and "accuracy".
+    """
+    model.eval()  # disables dropout, freezes batchnorm running stats
+    criterion = nn.CrossEntropyLoss()
+
+    loss_meter = AverageMeter()
+    acc_meter = AverageMeter()
+
+    for images, labels in loader:
+        images, labels = images.to(device), labels.to(device)
+
+        logits = model(images)
+        loss = criterion(logits, labels)
+
+        preds = logits.argmax(dim=1)
+        batch_acc = (preds == labels).float().mean().item()
+
+        loss_meter.update(loss.item(), n=images.size(0))
+        acc_meter.update(batch_acc, n=images.size(0))
+
+    return {"loss": loss_meter.avg, "accuracy": acc_meter.avg}
+
+
 if __name__ == "__main__":
     device = get_device()
     print(f"Selected device: {device}")
@@ -120,3 +164,6 @@ if __name__ == "__main__":
 
     result = train_one_epoch(model, loaders["train"], optimizer, device)
     print(f"train_one_epoch result: {result}")
+
+    val_result = evaluate(model, loaders["val"], device)
+    print(f"evaluate (val) result: {val_result}")
