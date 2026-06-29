@@ -47,3 +47,22 @@ Starts with CIFAR-10 (auto-downloaded by torchvision). The data pipeline in
 `src/data.py` is written so other small image datasets (e.g. a plant-disease
 dataset, MedMNIST) can be swapped in later without changing the rest of the
 code.
+
+## Training
+
+`src/train.py` provides `train_model(model_name, model, loaders, device,
+num_epochs)`, which works the same way for all 3 models (CNN, ViT-scratch,
+ViT-pretrained). It logs train/val loss and accuracy per epoch, saves the
+best checkpoint to `outputs/checkpoints/`, and saves the full training
+history to `outputs/history/<model_name>_history.json` for later plotting.
+
+Two presets are defined at the top of `src/train.py`:
+
+- `DEV_CONFIG` — tiny data subset, few epochs, for fast iteration while
+  writing code. Results are not meaningful, just useful for catching bugs.
+- `FINAL_CONFIG` — full dataset, more epochs, for the run whose numbers
+  you'd report. This takes noticeably longer, especially for the ViTs —
+  a GPU is strongly recommended (Colab's free GPU runtime works fine).
+
+Quick manual check: `python -m src.train` runs a 2-epoch CNN training pass
+on a tiny subset and confirms checkpoint save/load works.
