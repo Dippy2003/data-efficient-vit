@@ -145,6 +145,42 @@ def evaluate(model, loader, device) -> dict:
     return {"loss": loss_meter.avg, "accuracy": acc_meter.avg}
 
 
+def get_optimizer(model_name: str, model: nn.Module) -> torch.optim.Optimizer:
+    """
+    Build the optimizer with sensible, model-appropriate defaults.
+
+    Why this differs by model: transformers (both ViT variants) are
+    typically trained with AdamW rather than plain SGD, since attention
+    layers tend to train more stably with adaptive per-parameter learning
+    rates. For the *pretrained* ViT we also use a smaller learning rate --
+    fine-tuning should nudge the already-good pretrained weights gently,
+    not overwrite them with large updates the way training from scratch
+    requires.
+
+    Parameters
+    ----------
+    model_name : str
+        One of "vit_scratch", "cnn", "vit_pretrained" (matches
+        src/models.py's MODEL_REGISTRY keys).
+    model : nn.Module
+
+    Returns
+    -------
+    torch.optim.Optimizer
+    """
+    if model_name == "vit_pretrained":
+        lr = 1e-4  # small LR: fine-tune gently, don't destroy pretrained weights
+        return torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    elif model_name == "vit_scratch":
+        lr = 1e-3  # larger LR: this model must learn everything from zero
+        return torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    elif model_name == "cnn":
+        lr = 1e-3
+        return torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    else:
+        raise ValueError(f"Unknown model_name '{model_name}'.")
+
+
 if __name__ == "__main__":
     device = get_device()
     print(f"Selected device: {device}")
@@ -160,7 +196,7 @@ if __name__ == "__main__":
 
     loaders = get_dataloaders(subset_fraction=0.02, image_size=224, batch_size=8, num_workers=0)
     model = build_model("cnn", num_classes=10).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    optimizer = get_optimizer("cnn", model)
 
     result = train_one_epoch(model, loaders["train"], optimizer, device)
     print(f"train_one_epoch result: {result}")
