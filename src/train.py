@@ -7,6 +7,7 @@ model(images) and expects logits back, so the same training code works for
 the CNN and both ViT variants without special-casing.
 """
 
+import json
 import os
 
 import torch
@@ -183,6 +184,34 @@ def get_optimizer(model_name: str, model: nn.Module) -> torch.optim.Optimizer:
         raise ValueError(f"Unknown model_name '{model_name}'.")
 
 
+def save_history(history: dict, model_name: str, history_dir: str = "outputs/history") -> str:
+    """
+    Save a training history dict (train/val loss & accuracy per epoch) as
+    JSON, so src/visualize.py can plot curves later without needing to
+    retrain -- training the pretrained ViT especially can take a while, so
+    we don't want to throw the numbers away after one notebook session.
+
+    Parameters
+    ----------
+    history : dict
+        Output of train_model(): keys "train_loss", "train_acc", "val_loss",
+        "val_acc", each a list of floats (one per epoch).
+    model_name : str
+        Used to build the filename, e.g. "cnn" -> "outputs/history/cnn_history.json".
+    history_dir : str
+        Directory to save into; created if it doesn't exist.
+
+    Returns
+    -------
+    str : path the history was saved to.
+    """
+    os.makedirs(history_dir, exist_ok=True)
+    path = os.path.join(history_dir, f"{model_name}_history.json")
+    with open(path, "w") as f:
+        json.dump(history, f, indent=2)
+    return path
+
+
 def save_checkpoint(model: nn.Module, model_name: str, checkpoint_dir: str = "outputs/checkpoints") -> str:
     """
     Save the model's weights to disk.
@@ -260,6 +289,9 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) ->
             best_val_acc = val_result["accuracy"]
             checkpoint_path = save_checkpoint(model, model_name)
             print(f"[{model_name}] new best val_acc={best_val_acc:.4f}, saved to {checkpoint_path}")
+
+    history_path = save_history(history, model_name)
+    print(f"[{model_name}] training history saved to {history_path}")
 
     return history
 
