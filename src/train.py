@@ -181,6 +181,54 @@ def get_optimizer(model_name: str, model: nn.Module) -> torch.optim.Optimizer:
         raise ValueError(f"Unknown model_name '{model_name}'.")
 
 
+def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) -> dict:
+    """
+    Full training loop: runs `num_epochs` epochs, evaluating on the
+    validation set after each one, and prints progress.
+
+    This is the function the notebook will actually call for each of the
+    3 models. Returns a history dict so src/visualize.py can later plot
+    loss/accuracy curves without re-running training.
+
+    Parameters
+    ----------
+    model_name : str
+        Used to pick the right optimizer settings (see get_optimizer).
+    model : nn.Module
+        Should already be moved to `device` by the caller.
+    loaders : dict
+        Output of get_dataloaders() -- needs "train" and "val" keys.
+    device : torch.device
+    num_epochs : int
+        Keep this small (3-5) while developing; scale up for final results.
+
+    Returns
+    -------
+    dict with keys "train_loss", "train_acc", "val_loss", "val_acc", each a
+    list with one entry per epoch.
+    """
+    optimizer = get_optimizer(model_name, model)
+
+    history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
+
+    for epoch in range(1, num_epochs + 1):
+        train_result = train_one_epoch(model, loaders["train"], optimizer, device)
+        val_result = evaluate(model, loaders["val"], device)
+
+        history["train_loss"].append(train_result["loss"])
+        history["train_acc"].append(train_result["accuracy"])
+        history["val_loss"].append(val_result["loss"])
+        history["val_acc"].append(val_result["accuracy"])
+
+        print(
+            f"[{model_name}] epoch {epoch}/{num_epochs} -- "
+            f"train_loss={train_result['loss']:.4f} train_acc={train_result['accuracy']:.4f} "
+            f"val_loss={val_result['loss']:.4f} val_acc={val_result['accuracy']:.4f}"
+        )
+
+    return history
+
+
 if __name__ == "__main__":
     device = get_device()
     print(f"Selected device: {device}")
@@ -196,10 +244,6 @@ if __name__ == "__main__":
 
     loaders = get_dataloaders(subset_fraction=0.02, image_size=224, batch_size=8, num_workers=0)
     model = build_model("cnn", num_classes=10).to(device)
-    optimizer = get_optimizer("cnn", model)
 
-    result = train_one_epoch(model, loaders["train"], optimizer, device)
-    print(f"train_one_epoch result: {result}")
-
-    val_result = evaluate(model, loaders["val"], device)
-    print(f"evaluate (val) result: {val_result}")
+    history = train_model("cnn", model, loaders, device, num_epochs=2)
+    print(f"Training history: {history}")
