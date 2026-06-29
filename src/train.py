@@ -239,6 +239,34 @@ def save_checkpoint(model: nn.Module, model_name: str, checkpoint_dir: str = "ou
     return path
 
 
+def load_checkpoint(model: nn.Module, model_name: str, device, checkpoint_dir: str = "outputs/checkpoints") -> nn.Module:
+    """
+    Load saved weights into `model` in-place. Used by evaluation and
+    visualization code (later modules) to reload the best version of a
+    trained model without re-running training.
+
+    Parameters
+    ----------
+    model : nn.Module
+        A freshly built model (e.g. from build_model()) with matching
+        architecture -- weights are loaded into this instance.
+    model_name : str
+        Must match the name used when the checkpoint was saved.
+    device : torch.device
+        Checkpoints are mapped to this device on load, so a model saved
+        on GPU can still be loaded on a CPU-only machine.
+    checkpoint_dir : str
+
+    Returns
+    -------
+    nn.Module : the same `model`, with weights loaded, moved to `device`.
+    """
+    path = os.path.join(checkpoint_dir, f"{model_name}_best.pth")
+    state_dict = torch.load(path, map_location=device)
+    model.load_state_dict(state_dict)
+    return model.to(device)
+
+
 def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) -> dict:
     """
     Full training loop: runs `num_epochs` epochs, evaluating on the
@@ -321,3 +349,9 @@ if __name__ == "__main__":
 
     history = train_model("cnn", model, loaders, device, num_epochs=2)
     print(f"Training history: {history}")
+
+    # Smoke test load_checkpoint(): build a fresh model and load saved weights into it.
+    fresh_model = build_model("cnn", num_classes=10)
+    fresh_model = load_checkpoint(fresh_model, "cnn", device)
+    reload_result = evaluate(fresh_model, loaders["val"], device)
+    print(f"Reloaded checkpoint eval result: {reload_result}")
