@@ -331,18 +331,21 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) ->
     return history
 
 
-if __name__ == "__main__":
+def _manual_smoke_test():
+    """
+    Quick end-to-end check: run `python -m src.train` to exercise every
+    piece of this module (device selection, AverageMeter, a tiny training
+    run, and checkpoint save/load) without needing a notebook.
+    """
+    from src.data import get_dataloaders
+    from src.models import build_model
+
     device = get_device()
-    print(f"Selected device: {device}")
 
     meter = AverageMeter()
     meter.update(2.0, n=4)
     meter.update(4.0, n=2)
     print(f"AverageMeter test: avg={meter.avg:.3f}")  # expect 2.667
-
-    # Smoke test train_one_epoch() on a tiny CNN + tiny data subset.
-    from src.data import get_dataloaders
-    from src.models import build_model
 
     loaders = get_dataloaders(subset_fraction=0.02, image_size=224, batch_size=8, num_workers=0)
     model = build_model("cnn", num_classes=10).to(device)
@@ -350,8 +353,12 @@ if __name__ == "__main__":
     history = train_model("cnn", model, loaders, device, num_epochs=2)
     print(f"Training history: {history}")
 
-    # Smoke test load_checkpoint(): build a fresh model and load saved weights into it.
+    # Build a fresh model and confirm the saved checkpoint loads correctly.
     fresh_model = build_model("cnn", num_classes=10)
     fresh_model = load_checkpoint(fresh_model, "cnn", device)
     reload_result = evaluate(fresh_model, loaders["val"], device)
     print(f"Reloaded checkpoint eval result: {reload_result}")
+
+
+if __name__ == "__main__":
+    _manual_smoke_test()
