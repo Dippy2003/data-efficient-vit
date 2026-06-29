@@ -8,6 +8,7 @@ the CNN and both ViT variants without special-casing.
 """
 
 import torch
+import torch.nn as nn
 
 
 class AverageMeter:
@@ -56,6 +57,50 @@ def get_device() -> torch.device:
     return device
 
 
+def train_one_epoch(model, loader, optimizer, device) -> dict:
+    """
+    Run one full pass over the training data: forward pass, loss, backward
+    pass, optimizer step -- repeated for every batch in `loader`.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Any of the 3 models from src/models.py. Must already be on `device`.
+    loader : DataLoader
+        Training DataLoader (the one with augmentation applied).
+    optimizer : torch.optim.Optimizer
+        Already constructed for this model's parameters.
+    device : torch.device
+
+    Returns
+    -------
+    dict with keys "loss" and "accuracy" -- the epoch's averages.
+    """
+    model.train()  # enables dropout / batchnorm update behaviour
+    criterion = nn.CrossEntropyLoss()
+
+    loss_meter = AverageMeter()
+    acc_meter = AverageMeter()
+
+    for images, labels in loader:
+        images, labels = images.to(device), labels.to(device)
+
+        optimizer.zero_grad()
+        logits = model(images)
+        loss = criterion(logits, labels)
+        loss.backward()
+        optimizer.step()
+
+        # accuracy: fraction of predictions matching the true label
+        preds = logits.argmax(dim=1)
+        batch_acc = (preds == labels).float().mean().item()
+
+        loss_meter.update(loss.item(), n=images.size(0))
+        acc_meter.update(batch_acc, n=images.size(0))
+
+    return {"loss": loss_meter.avg, "accuracy": acc_meter.avg}
+
+
 if __name__ == "__main__":
     device = get_device()
     print(f"Selected device: {device}")
@@ -64,3 +109,14 @@ if __name__ == "__main__":
     meter.update(2.0, n=4)
     meter.update(4.0, n=2)
     print(f"AverageMeter test: avg={meter.avg:.3f}")  # expect 2.667
+
+    # Smoke test train_one_epoch() on a tiny CNN + tiny data subset.
+    from src.data import get_dataloaders
+    from src.models import build_model
+
+    loaders = get_dataloaders(subset_fraction=0.02, image_size=224, batch_size=8, num_workers=0)
+    model = build_model("cnn", num_classes=10).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+
+    result = train_one_epoch(model, loaders["train"], optimizer, device)
+    print(f"train_one_epoch result: {result}")
