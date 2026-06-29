@@ -16,8 +16,15 @@ grow a small dataset, so it's worth keeping consistent across all 3 models
 to make the comparison fair.
 """
 
+import warnings
+
 import torch
 from torch.utils.data import DataLoader, Subset
+
+# torchvision's CIFAR-10 loader triggers a harmless NumPy 2.4 deprecation
+# warning internally (unrelated to our code -- it's in torchvision's pickle
+# loading path). Silencing just this one warning keeps real warnings visible.
+warnings.filterwarnings("ignore", message=r"dtype\(\): align should be passed")
 import torchvision
 import torchvision.transforms as T
 
