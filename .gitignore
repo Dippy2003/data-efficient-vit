@@ -16,6 +16,7 @@ data/
 # Model checkpoints and generated outputs (large, regenerable)
 outputs/checkpoints/*.pth
 outputs/figures/*.png
+outputs/history/*.json
 
 # OS / editor cruft
 .DS_Store
