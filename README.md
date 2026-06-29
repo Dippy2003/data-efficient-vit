@@ -19,16 +19,18 @@ Expected story: **from-scratch ViT < CNN < fine-tuned ViT**.
 
 ```
 src/
-  data.py        # dataset loading, transforms, dataloaders
-  models.py      # model builders (ViT-scratch, CNN, pretrained ViT)
-  train.py       # training loop
-  evaluate.py    # accuracy, confusion matrix, per-class metrics
-  visualize.py   # loss/accuracy curves, attention-map overlays
+  data.py             # dataset loading, transforms, dataloaders
+  models.py           # model builders (ViT-scratch, CNN, pretrained ViT)
+  train.py            # training loop, optimizer/scheduler, checkpointing
+  evaluate.py         # accuracy, confusion matrix, per-class metrics (coming next)
+  visualize.py        # loss/accuracy curves, attention-map overlays (coming next)
+  test_integration.py # smoke tests: data + models + training all wired together
 notebooks/
-  main.ipynb     # end-to-end walkthrough with explanations
+  main.ipynb          # end-to-end walkthrough with explanations
 outputs/
-  figures/       # saved plots
-  checkpoints/   # saved model weights (gitignored, regenerate by training)
+  figures/            # saved plots (gitignored, regenerate by running code)
+  checkpoints/        # saved model weights (gitignored, regenerate by training)
+  history/            # per-model training curves as JSON (gitignored, regenerate by training)
 ```
 
 ## Setup
