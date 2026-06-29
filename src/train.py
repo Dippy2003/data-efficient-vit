@@ -13,6 +13,14 @@ import os
 import torch
 import torch.nn as nn
 
+# Two presets for subset_fraction / num_epochs: use DEV_CONFIG while writing
+# and debugging code (fast feedback, results are meaningless), and switch to
+# FINAL_CONFIG only for the run whose numbers go into your report/video.
+# Training all 3 models with FINAL_CONFIG will take a while -- a GPU is
+# strongly recommended (see get_device()'s warning if none is found).
+DEV_CONFIG = {"subset_fraction": 0.05, "num_epochs": 2}
+FINAL_CONFIG = {"subset_fraction": 1.0, "num_epochs": 15}
+
 
 class AverageMeter:
     """
