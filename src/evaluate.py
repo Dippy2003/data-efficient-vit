@@ -118,3 +118,42 @@ def compute_accuracy(model, loader, device) -> float:
     """
     y_true, y_pred = collect_predictions(model, loader, device)
     return float((y_true == y_pred).mean())
+
+
+def build_results_table(models_dict: dict, loader, device, class_names=None) -> list:
+    """
+    Evaluate every model in `models_dict` on `loader` and return a list of
+    result rows -- one per model -- for the final comparison table.
+
+    This is the last piece of the evaluation pipeline: the table it produces
+    is the single summary that answers "which model won, and by how much?"
+    for your report and explainer video.
+
+    Parameters
+    ----------
+    models_dict : dict  {model_name: nn.Module}
+        All 3 models, already loaded with their best checkpoints and moved
+        to `device`. Use build_model() + load_checkpoint() to prepare each.
+    loader : DataLoader
+        Test loader (non-augmented).
+    device : torch.device
+    class_names : tuple/list of str, optional
+
+    Returns
+    -------
+    list of dicts, each with keys:
+        "model"     -- human-readable model name
+        "accuracy"  -- float, top-1 accuracy on test set
+        "macro_f1"  -- float, macro-averaged F1 (balances across classes)
+    """
+    from sklearn.metrics import f1_score
+
+    rows = []
+    for name, model in models_dict.items():
+        y_true, y_pred = collect_predictions(model, loader, device)
+        acc = float((y_true == y_pred).mean())
+        macro_f1 = float(f1_score(y_true, y_pred, average="macro"))
+        rows.append({"model": name, "accuracy": acc, "macro_f1": macro_f1})
+        print(f"[results] {name}: accuracy={acc:.4f} macro_f1={macro_f1:.4f}")
+
+    return rows
