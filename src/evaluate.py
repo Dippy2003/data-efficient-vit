@@ -48,3 +48,19 @@ def collect_predictions(model, loader, device) -> tuple:
         all_pred.append(preds)
 
     return np.concatenate(all_true), np.concatenate(all_pred)
+
+
+def compute_accuracy(model, loader, device) -> float:
+    """
+    Return the top-1 accuracy (fraction correct) of `model` on `loader`.
+
+    Top-1 means we take the class with the highest logit as the prediction
+    and check whether it matches the true label -- the standard metric for
+    single-label classification like CIFAR-10.
+
+    Returns
+    -------
+    float in [0, 1]
+    """
+    y_true, y_pred = collect_predictions(model, loader, device)
+    return float((y_true == y_pred).mean())
