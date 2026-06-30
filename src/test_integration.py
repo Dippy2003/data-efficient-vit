@@ -9,9 +9,17 @@ script you can call before each training run to catch shape mismatches or
 broken imports early, without waiting for a full training loop to fail.
 """
 
-from src.data import get_dataloaders
+from src.data import get_dataloaders, CIFAR10_CLASSES
+from src.evaluate import (
+    compute_accuracy, confusion_matrix_from_loader,
+    per_class_report, build_results_table, print_results_table,
+)
 from src.models import MODEL_REGISTRY, build_model, count_parameters
-from src.train import get_device, train_model
+from src.train import get_device, load_checkpoint, train_model
+from src.visualize import (
+    plot_training_curves, plot_confusion_matrix,
+    plot_attention_overlay, plot_sample_predictions,
+)
 
 
 def main():
@@ -56,6 +64,61 @@ def test_train_all_models():
     print("Integration test passed: all 3 models can be trained end-to-end.")
 
 
+def test_evaluate_and_visualize():
+    """
+    Confirms evaluate.py and visualize.py work end-to-end using the
+    checkpoints saved by the earlier training test.
+    """
+    device = get_device()
+    loaders = get_dataloaders(
+        subset_fraction=0.02, image_size=224, batch_size=8, num_workers=0
+    )
+
+    # Load all 3 checkpoints
+    models = {}
+    for name in MODEL_REGISTRY:
+        m = build_model(name).to(device)
+        models[name] = load_checkpoint(m, name, device)
+
+    # Accuracy
+    for name, model in models.items():
+        acc = compute_accuracy(model, loaders["test"], device)
+        print(f"{name} test accuracy: {acc:.4f}")
+
+    # Confusion matrix + plot for CNN
+    cm, classes = confusion_matrix_from_loader(models["cnn"], loaders["test"], device, CIFAR10_CLASSES)
+    plot_confusion_matrix(cm, classes, "cnn")
+    print("Confusion matrix plot: OK")
+
+    # Per-class report
+    report = per_class_report(models["cnn"], loaders["test"], device, CIFAR10_CLASSES)
+    assert "precision" in report
+    print("Per-class report: OK")
+
+    # Results table
+    rows = build_results_table(models, loaders["test"], device)
+    print_results_table(rows)
+
+    # Training curves (uses saved JSON histories)
+    plot_training_curves()
+    print("Training curves plot: OK")
+
+    # Sample predictions
+    plot_sample_predictions(models["cnn"], loaders["test"], device, CIFAR10_CLASSES, "cnn")
+    print("Sample predictions plot: OK")
+
+    # Attention map on pretrained ViT
+    images, labels = next(iter(loaders["test"]))
+    plot_attention_overlay(
+        models["vit_pretrained"], images[:1].to(device),
+        class_name=CIFAR10_CLASSES[labels[0].item()]
+    )
+    print("Attention overlay plot: OK")
+
+    print("Integration test passed: evaluate + visualize pipeline works end-to-end.")
+
+
 if __name__ == "__main__":
     main()
     test_train_all_models()
+    test_evaluate_and_visualize()
