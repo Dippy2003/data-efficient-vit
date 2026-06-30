@@ -133,3 +133,44 @@ stays the same — confirming the data-efficiency story.
 Attention maps work on both ViT variants. A pretrained ViT's attention is
 usually focused on the object; a from-scratch ViT's attention is noisier,
 which is another way to visualise the data-efficiency gap beyond accuracy.
+
+## How to reproduce (full run)
+
+```python
+# 1. Load data
+from src.data import get_dataloaders, CIFAR10_CLASSES
+loaders = get_dataloaders(subset_fraction=1.0, image_size=224, batch_size=64)
+
+# 2. Train all 3 models (GPU strongly recommended)
+from src.models import build_model
+from src.train import get_device, train_model, load_checkpoint, FINAL_CONFIG
+device = get_device()
+for name in ["vit_scratch", "cnn", "vit_pretrained"]:
+    model = build_model(name).to(device)
+    train_model(name, model, loaders, device, **FINAL_CONFIG)
+
+# 3. Evaluate
+from src.evaluate import build_results_table, print_results_table
+models = {n: load_checkpoint(build_model(n).to(device), n, device)
+          for n in ["vit_scratch", "cnn", "vit_pretrained"]}
+rows = build_results_table(models, loaders["test"], device, CIFAR10_CLASSES)
+print_results_table(rows)
+
+# 4. Visualize (plots saved to outputs/figures/)
+from src.visualize import (plot_training_curves, plot_confusion_matrix,
+                           plot_sample_predictions, plot_attention_overlay)
+from src.evaluate import confusion_matrix_from_loader
+plot_training_curves()
+for name, model in models.items():
+    cm, cls = confusion_matrix_from_loader(model, loaders["test"], device, CIFAR10_CLASSES)
+    plot_confusion_matrix(cm, cls, name)
+    plot_sample_predictions(model, loaders["test"], device, CIFAR10_CLASSES, name)
+```
+
+For a fast development run swap `subset_fraction=1.0` → `0.05` and
+`FINAL_CONFIG` → `DEV_CONFIG` (defined in `src/train.py`).
+
+For a quick sanity check that everything is wired up correctly:
+```bash
+python -m src.test_integration
+```
