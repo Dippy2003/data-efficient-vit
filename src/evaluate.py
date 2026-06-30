@@ -11,6 +11,8 @@ checkpoint and evaluate it without re-running training -- useful when
 training took a long time (e.g. the pretrained ViT on the full dataset).
 """
 
+import os
+
 import numpy as np
 import torch
 from sklearn.metrics import confusion_matrix, classification_report
@@ -157,3 +159,32 @@ def build_results_table(models_dict: dict, loader, device, class_names=None) -> 
         print(f"[results] {name}: accuracy={acc:.4f} macro_f1={macro_f1:.4f}")
 
     return rows
+
+
+def print_results_table(rows: list, save_path: str = "outputs/results_table.txt"):
+    """
+    Pretty-print the comparison table from build_results_table() and save
+    it to a text file.
+
+    Parameters
+    ----------
+    rows : list of dicts (output of build_results_table())
+    save_path : str  path to save the table; directory created if needed.
+    """
+    header = f"{'Model':<20} {'Accuracy':>10} {'Macro F1':>10}"
+    sep = "-" * len(header)
+    lines = [sep, header, sep]
+
+    for row in rows:
+        lines.append(
+            f"{row['model']:<20} {row['accuracy']:>10.4f} {row['macro_f1']:>10.4f}"
+        )
+    lines.append(sep)
+    table_str = "\n".join(lines)
+
+    print(table_str)
+
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    with open(save_path, "w") as f:
+        f.write(table_str + "\n")
+    print(f"Results table saved to {save_path}")
