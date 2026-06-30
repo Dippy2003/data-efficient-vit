@@ -92,3 +92,44 @@ learning rate differs by model (`get_optimizer()` in `src/train.py`):
 Note the from-scratch ViT is actually *smaller* than the CNN baseline, which
 is useful for the project's argument: any accuracy gap is about
 architecture/inductive bias, not raw model capacity.
+
+## Evaluation
+
+`src/evaluate.py` provides four functions, all usable after loading a
+checkpoint with `load_checkpoint()` from `src/train.py`:
+
+| Function | What it produces |
+|---|---|
+| `compute_accuracy()` | Top-1 accuracy (single float) on any loader |
+| `confusion_matrix_from_loader()` | NxN matrix of true vs predicted class counts |
+| `per_class_report()` | Precision, recall, F1 per class (sklearn formatted string) |
+| `build_results_table()` | List of rows comparing all 3 models: accuracy + macro F1 |
+| `print_results_table()` | Pretty-prints the above table and saves to `outputs/results_table.txt` |
+
+Expected results (1 epoch, 2% of CIFAR-10 — indicative only):
+
+```
+Model                  Accuracy   Macro F1
+------------------------------------------
+vit_scratch              0.172      0.077
+cnn                      0.201      0.132
+vit_pretrained           0.696      0.692
+```
+
+With the full dataset and more epochs, all three improve, but the ranking
+stays the same — confirming the data-efficiency story.
+
+## Visualization
+
+`src/visualize.py` saves all plots to `outputs/figures/`:
+
+| Function | Output file |
+|---|---|
+| `plot_training_curves()` | `training_curves.png` — loss and accuracy per epoch for all 3 models |
+| `plot_confusion_matrix()` | `<model>_confusion.png` — normalised confusion heatmap |
+| `plot_sample_predictions()` | `<model>_predictions.png` — grid of images, green=correct, red=wrong |
+| `plot_attention_overlay()` | `<model>_attention.png` — ViT attention overlaid on a sample image |
+
+Attention maps work on both ViT variants. A pretrained ViT's attention is
+usually focused on the object; a from-scratch ViT's attention is noisier,
+which is another way to visualise the data-efficiency gap beyond accuracy.
