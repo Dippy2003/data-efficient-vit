@@ -22,8 +22,8 @@ src/
   data.py             # dataset loading, transforms, dataloaders
   models.py           # model builders (ViT-scratch, CNN, pretrained ViT)
   train.py            # training loop, optimizer/scheduler, checkpointing
-  evaluate.py         # accuracy, confusion matrix, per-class metrics (coming next)
-  visualize.py        # loss/accuracy curves, attention-map overlays (coming next)
+  evaluate.py         # accuracy, confusion matrix, per-class metrics, results table
+  visualize.py        # training curves, confusion heatmap, attention maps, sample predictions
   test_integration.py # smoke tests: data + models + training all wired together
 notebooks/
   main.ipynb          # end-to-end walkthrough with explanations
