@@ -218,3 +218,89 @@ def get_attention_maps(vit_model, image_tensor):
 
     # Shape: (1, num_heads, num_patches+1, num_patches+1) -> drop batch dim
     return attention_output[0][0]
+
+
+def plot_attention_overlay(
+    vit_model, image_tensor, class_name: str = "", model_name: str = "vit_pretrained",
+    save_path: str = None
+) -> str:
+    """
+    Overlay the ViT's mean head attention map on the original image and save
+    the result as a PNG side-by-side comparison (original | attention | overlay).
+
+    Why attention maps matter for this project: they let you *show* what the
+    model has learned. A well-trained pretrained ViT will typically highlight
+    the object (cat, car, etc.) rather than the background -- even though the
+    model was never explicitly told which pixels matter. A from-scratch ViT
+    trained on a tiny dataset usually shows a much noisier, diffuse pattern,
+    visually reinforcing why it underperforms.
+
+    Parameters
+    ----------
+    vit_model : nn.Module  (a timm ViT, already eval() and on device)
+    image_tensor : torch.Tensor  shape (1, 3, 224, 224)
+    class_name : str  used in the figure title (e.g. "cat")
+    model_name : str  used in the filename
+    save_path : str, optional
+
+    Returns
+    -------
+    str : path the figure was saved to.
+    """
+    from PIL import Image as PILImage
+    import torch.nn.functional as F
+
+    if save_path is None:
+        save_path = os.path.join(FIGURES_DIR, f"{model_name}_attention.png")
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+
+    attn = get_attention_maps(vit_model, image_tensor)  # (heads, 197, 197)
+
+    # CLS token (row 0) attention to all patch tokens (columns 1:)
+    # Average across heads to get a single map
+    cls_attn = attn[:, 0, 1:]          # (heads, 196)
+    mean_attn = cls_attn.mean(axis=0)  # (196,)
+
+    # Reshape to spatial grid: 196 = 14x14 patches (for 224/16)
+    grid_size = int(mean_attn.shape[0] ** 0.5)
+    attn_map = mean_attn.reshape(grid_size, grid_size)
+
+    # Normalise to [0, 1]
+    attn_map = (attn_map - attn_map.min()) / (attn_map.max() - attn_map.min() + 1e-8)
+
+    # Upsample from 14x14 to 224x224 using bilinear interpolation
+    import torch
+    attn_tensor = torch.from_numpy(attn_map).unsqueeze(0).unsqueeze(0).float()
+    attn_upsampled = F.interpolate(attn_tensor, size=(224, 224), mode="bilinear",
+                                   align_corners=False).squeeze().numpy()
+
+    # Denormalise image from model-normalised tensor to [0,1] RGB
+    CIFAR10_MEAN = np.array([0.4914, 0.4822, 0.4465])
+    CIFAR10_STD  = np.array([0.2470, 0.2435, 0.2616])
+    img_np = image_tensor.squeeze(0).cpu().numpy().transpose(1, 2, 0)
+    img_np = np.clip(img_np * CIFAR10_STD + CIFAR10_MEAN, 0, 1)
+
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3.5))
+
+    axes[0].imshow(img_np)
+    axes[0].set_title("Original image")
+    axes[0].axis("off")
+
+    axes[1].imshow(attn_upsampled, cmap="hot")
+    axes[1].set_title("Attention map (CLS → patches)")
+    axes[1].axis("off")
+
+    axes[2].imshow(img_np)
+    axes[2].imshow(attn_upsampled, cmap="hot", alpha=0.5)
+    axes[2].set_title("Overlay")
+    axes[2].axis("off")
+
+    title = f"Attention: {model_name}"
+    if class_name:
+        title += f" — class: {class_name}"
+    fig.suptitle(title, fontsize=11)
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[visualize] saved attention overlay to {save_path}")
+    return save_path
