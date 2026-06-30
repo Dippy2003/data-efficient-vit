@@ -13,6 +13,7 @@ training took a long time (e.g. the pretrained ViT on the full dataset).
 
 import numpy as np
 import torch
+from sklearn.metrics import confusion_matrix, classification_report
 
 
 @torch.no_grad()
@@ -48,6 +49,33 @@ def collect_predictions(model, loader, device) -> tuple:
         all_pred.append(preds)
 
     return np.concatenate(all_true), np.concatenate(all_pred)
+
+
+def confusion_matrix_from_loader(model, loader, device, class_names=None) -> tuple:
+    """
+    Compute the confusion matrix for `model` on `loader`.
+
+    A confusion matrix is an NxN grid where entry (i, j) = number of times
+    a sample of true class i was predicted as class j. The diagonal is
+    correct predictions; off-diagonal entries show where the model gets
+    confused. For CIFAR-10 you'll typically see cat<->dog and
+    automobile<->truck confusions, which are visually similar pairs -- a
+    good observation to call out in your video.
+
+    Parameters
+    ----------
+    model, loader, device : same as collect_predictions()
+    class_names : list of str, optional
+        e.g. CIFAR10_CLASSES from src/data.py. Returned as-is for use by
+        the plotting code.
+
+    Returns
+    -------
+    (cm, class_names) where cm is a 2-D numpy array of shape (N, N).
+    """
+    y_true, y_pred = collect_predictions(model, loader, device)
+    cm = confusion_matrix(y_true, y_pred)
+    return cm, class_names
 
 
 def compute_accuracy(model, loader, device) -> float:
