@@ -159,3 +159,62 @@ def plot_confusion_matrix(cm, class_names, model_name: str, save_path: str = Non
     plt.close(fig)
     print(f"[visualize] saved confusion matrix to {save_path}")
     return save_path
+
+
+def get_attention_maps(vit_model, image_tensor):
+    """
+    Extract the self-attention weights from the last transformer block of a
+    timm ViT model for a single image.
+
+    How ViT attention works: after splitting the image into patches, each
+    patch attends to every other patch via a learned attention weight. In a
+    well-trained model, the patch containing the main object tends to have
+    high attention weights to other informative patches -- so the attention
+    map acts like a rough "where is the model looking?" visualisation.
+
+    Technical note: timm ViTs expose their blocks as model.blocks[i]. Each
+    block's attn module has an attn_drop submodule but we hook the softmax
+    output directly by temporarily registering a forward hook. We use the
+    *last* block because its attention typically captures the most
+    semantically meaningful relationships (earlier blocks tend to attend
+    more locally, like edges and textures).
+
+    Parameters
+    ----------
+    vit_model : nn.Module  (a timm vit_tiny_patch16_224, already eval())
+    image_tensor : torch.Tensor  shape (1, 3, H, W), already on the right device
+
+    Returns
+    -------
+    numpy array of shape (num_heads, num_patches+1, num_patches+1)
+    The +1 is the [CLS] token. Index [h, 0, 1:] gives the CLS token's
+    attention to each patch for head h -- that's what we'll plot.
+    """
+    import torch
+
+    attention_output = []
+
+    def hook_fn(module, input, output):
+        # timm's Attention.forward returns the attended values, not the
+        # weights. We need to re-extract the weights from inside the module.
+        # timm stores Q,K,V in a single fused linear layer (qkv).
+        B, N, C = input[0].shape
+        qkv = module.qkv(input[0])
+        qkv = qkv.reshape(B, N, 3, module.num_heads, C // module.num_heads)
+        qkv = qkv.permute(2, 0, 3, 1, 4)
+        q, k, _ = qkv.unbind(0)
+        scale = (C // module.num_heads) ** -0.5
+        attn = (q @ k.transpose(-2, -1)) * scale
+        attn = attn.softmax(dim=-1)
+        attention_output.append(attn.detach().cpu().numpy())
+
+    last_block = vit_model.blocks[-1]
+    handle = last_block.attn.register_forward_hook(hook_fn)
+
+    with torch.no_grad():
+        vit_model(image_tensor)
+
+    handle.remove()
+
+    # Shape: (1, num_heads, num_patches+1, num_patches+1) -> drop batch dim
+    return attention_output[0][0]
