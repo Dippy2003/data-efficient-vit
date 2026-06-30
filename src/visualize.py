@@ -304,3 +304,77 @@ def plot_attention_overlay(
     plt.close(fig)
     print(f"[visualize] saved attention overlay to {save_path}")
     return save_path
+
+
+def plot_sample_predictions(model, loader, device, class_names,
+                            model_name: str, n_samples: int = 16,
+                            save_path: str = None) -> str:
+    """
+    Show a grid of sample test images with their true and predicted labels.
+    Correct predictions get a green title, wrong ones get red.
+
+    Why this is useful for the video: a single accuracy number (e.g. 20%)
+    is abstract. A grid of images showing which ones the model gets right
+    vs wrong is immediately intuitive -- you can point to "the ViT-scratch
+    keeps predicting 'airplane' for everything, while the pretrained ViT
+    correctly identifies the cat."
+
+    Parameters
+    ----------
+    model, loader, device : standard
+    class_names : tuple/list of str
+    model_name : str  used in title and filename
+    n_samples : int  number of images to show (should be a perfect square)
+    save_path : str, optional
+    """
+    import torch
+
+    if save_path is None:
+        save_path = os.path.join(FIGURES_DIR, f"{model_name}_predictions.png")
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+
+    CIFAR10_MEAN = np.array([0.4914, 0.4822, 0.4465])
+    CIFAR10_STD  = np.array([0.2470, 0.2435, 0.2616])
+
+    model.eval()
+    images_shown, trues, preds = [], [], []
+
+    with torch.no_grad():
+        for images, labels in loader:
+            logits = model(images.to(device))
+            pred = logits.argmax(dim=1).cpu()
+            images_shown.append(images)
+            trues.append(labels)
+            preds.append(pred)
+            if sum(len(b) for b in images_shown) >= n_samples:
+                break
+
+    images_shown = torch.cat(images_shown)[:n_samples]
+    trues        = torch.cat(trues)[:n_samples]
+    preds        = torch.cat(preds)[:n_samples]
+
+    cols = int(n_samples ** 0.5)
+    rows = (n_samples + cols - 1) // cols
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 1.8, rows * 2.0))
+    axes = axes.flatten()
+
+    for i in range(n_samples):
+        img = images_shown[i].numpy().transpose(1, 2, 0)
+        img = np.clip(img * CIFAR10_STD + CIFAR10_MEAN, 0, 1)
+        axes[i].imshow(img)
+        axes[i].axis("off")
+        t, p = trues[i].item(), preds[i].item()
+        color = "green" if t == p else "red"
+        t_name = class_names[t] if class_names else str(t)
+        p_name = class_names[p] if class_names else str(p)
+        axes[i].set_title(f"T:{t_name}\nP:{p_name}", fontsize=6, color=color)
+
+    for ax in axes[n_samples:]:
+        ax.axis("off")
+
+    fig.suptitle(f"Sample predictions — {model_name}  (green=correct, red=wrong)", fontsize=9)
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[visualize] saved sample predictions to {save_path}")
+    return save_path
