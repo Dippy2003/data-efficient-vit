@@ -102,3 +102,60 @@ def plot_training_curves(
     plt.close(fig)
     print(f"[visualize] saved training curves to {save_path}")
     return save_path
+
+
+def plot_confusion_matrix(cm, class_names, model_name: str, save_path: str = None) -> str:
+    """
+    Plot a confusion matrix as a colour heatmap and save it to PNG.
+
+    Each cell (i, j) shows how many test samples of true class i were
+    predicted as class j. The diagonal = correct predictions (lighter =
+    more), off-diagonal = errors. Normalising by row (dividing each row by
+    its sum) converts raw counts to fractions, which is easier to read when
+    class sizes differ.
+
+    Parameters
+    ----------
+    cm : 2-D numpy array  (output of confusion_matrix_from_loader())
+    class_names : list/tuple of str
+    model_name : str  used in the figure title and filename
+    save_path : str, optional  defaults to outputs/figures/<model_name>_confusion.png
+
+    Returns
+    -------
+    str : path the figure was saved to.
+    """
+    if save_path is None:
+        save_path = os.path.join(FIGURES_DIR, f"{model_name}_confusion.png")
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+
+    # Normalise: row sums → 1.0 so the colour scale is always [0, 1]
+    cm_norm = cm.astype(float) / (cm.sum(axis=1, keepdims=True) + 1e-8)
+
+    n = len(class_names) if class_names else cm.shape[0]
+    fig, ax = plt.subplots(figsize=(n * 0.9, n * 0.8))
+
+    im = ax.imshow(cm_norm, interpolation="nearest", cmap="Blues", vmin=0, vmax=1)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    if class_names:
+        ax.set_xticks(range(n))
+        ax.set_yticks(range(n))
+        ax.set_xticklabels(class_names, rotation=45, ha="right", fontsize=8)
+        ax.set_yticklabels(class_names, fontsize=8)
+
+    # Annotate each cell with its normalised fraction
+    for i in range(n):
+        for j in range(n):
+            color = "white" if cm_norm[i, j] > 0.5 else "black"
+            ax.text(j, i, f"{cm_norm[i, j]:.2f}", ha="center", va="center",
+                    fontsize=6, color=color)
+
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+    ax.set_title(f"Confusion matrix — {model_name}")
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[visualize] saved confusion matrix to {save_path}")
+    return save_path
