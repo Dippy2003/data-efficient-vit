@@ -78,6 +78,32 @@ def confusion_matrix_from_loader(model, loader, device, class_names=None) -> tup
     return cm, class_names
 
 
+def per_class_report(model, loader, device, class_names=None) -> str:
+    """
+    Return sklearn's classification_report: per-class precision, recall,
+    F1, and support (number of test samples per class).
+
+    Why all three metrics (not just accuracy): accuracy hides class
+    imbalance effects and doesn't tell you *why* a model fails. A model
+    that ignores every 'cat' image and guesses randomly still gets ~90%
+    accuracy on the other 9 classes. Precision/recall/F1 break this down
+    so you can say, e.g., "the from-scratch ViT has near-zero recall on
+    cat and dog, confirming those are the visually hardest classes without
+    enough training data."
+
+    Parameters
+    ----------
+    model, loader, device : same as collect_predictions()
+    class_names : list/tuple of str, optional
+
+    Returns
+    -------
+    str : formatted table (ready to print or embed in a notebook cell)
+    """
+    y_true, y_pred = collect_predictions(model, loader, device)
+    return classification_report(y_true, y_pred, target_names=class_names, digits=3)
+
+
 def compute_accuracy(model, loader, device) -> float:
     """
     Return the top-1 accuracy (fraction correct) of `model` on `loader`.
