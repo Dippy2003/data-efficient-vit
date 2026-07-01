@@ -174,3 +174,30 @@ For a quick sanity check that everything is wired up correctly:
 ```bash
 python -m src.test_integration
 ```
+
+## Notebook
+
+`notebooks/main.ipynb` is an end-to-end walkthrough of the whole experiment
+with explanations at every step — intended as the basis for the explainer video.
+
+It covers:
+1. What is a Vision Transformer? (patch embedding, positional encoding, CLS token, self-attention)
+2. Data pipeline — CIFAR-10, augmentation, the 32→224 resize choice
+3. Model architectures + parameter counts for all 3 models
+4. Training strategy — optimiser, cosine LR schedule, DEV vs FINAL config
+5. Training curves — loss and accuracy per epoch for all 3 models
+6. Evaluation — accuracy + macro F1 comparison table, per-class report
+7. Confusion matrices — heatmap per model
+8. Sample predictions — image grid, green=correct / red=wrong
+9. Attention maps — CLS attention overlay comparing pretrained vs from-scratch ViT
+10. Conclusion + how to scale up for the final graded run
+
+### Running on Colab (recommended)
+
+```
+!git clone https://github.com/Dippy2003/data-efficient-vit.git
+%cd data-efficient-vit
+```
+
+Then open `notebooks/main.ipynb`, set the runtime to GPU, and run all cells.
+Set `USE_FULL_DATA = True` before the final graded run.
