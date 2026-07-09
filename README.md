@@ -111,22 +111,51 @@ ViTs use **global self-attention** — every patch can attend to every other pat
 
 ---
 
+## Quick start
+
+One command trains all 3 models, evaluates them, and saves every plot:
+
+```bash
+# Fast dev run — 5% of data, 2 epochs (~6 min on GPU)
+python -m src.run_experiment
+
+# Full graded run — 100% data, 15 epochs (~2 hr on GPU)
+python -m src.run_experiment --mode final
+
+# Train specific models only
+python -m src.run_experiment --models vit_pretrained cnn --epochs 10
+
+# Custom subset and epoch count
+python -m src.run_experiment --subset 0.1 --epochs 5
+
+# Re-evaluate existing checkpoints without re-training
+python -m src.run_experiment --skip-train
+
+# Just print the results table, no plots
+python -m src.run_experiment --skip-train --skip-viz
+```
+
+All outputs (figures, checkpoints, history JSON, results table) are saved to `outputs/` automatically.
+
+---
+
 ## Project structure
 
 ```
 src/
-  data.py             # CIFAR-10 loading, augmentation, dataloaders
-  models.py           # build_model() factory for all 3 models
-  train.py            # training loop, AdamW + cosine LR, checkpointing
-  evaluate.py         # accuracy, confusion matrix, F1, results table
-  visualize.py        # training curves, confusion heatmap, attention maps, prediction grid
-  test_integration.py # smoke test — runs everything end-to-end in ~5 min
+  data.py              # CIFAR-10 loading, augmentation, dataloaders
+  models.py            # build_model() factory for all 3 models
+  train.py             # training loop, AdamW + cosine LR, checkpointing
+  evaluate.py          # accuracy, confusion matrix, F1, results table
+  visualize.py         # training curves, confusion heatmap, attention maps, prediction grid
+  run_experiment.py    # CLI runner — trains + evaluates + visualises in one command
+  test_integration.py  # smoke test — runs everything end-to-end in ~5 min
 notebooks/
-  main.ipynb          # full explainer notebook (run on Colab)
+  main.ipynb           # full explainer notebook (run on Colab)
 outputs/
-  figures/            # all plots saved here (gitignored — regenerate by running)
-  checkpoints/        # best model weights (gitignored — regenerate by training)
-  history/            # training history JSON per model (gitignored)
+  figures/             # all plots saved here (gitignored — regenerate by running)
+  checkpoints/         # best model weights (gitignored — regenerate by training)
+  history/             # training history JSON per model (gitignored)
 ```
 
 ---
@@ -151,38 +180,41 @@ Then go to **Runtime → Change runtime type → GPU**.
 
 ## How to run
 
-### Quick sanity check (~5 min, no GPU needed)
+### Option 1 — CLI runner (easiest)
+
+```bash
+# Dev run (fast, for testing)
+python -m src.run_experiment
+
+# Full graded run
+python -m src.run_experiment --mode final
+```
+
+`src/run_experiment.py` handles data loading, training, evaluation, and all visualizations in one shot. All outputs go to `outputs/` automatically.
+
+**All CLI flags:**
+
+| Flag | Default | What it does |
+|---|---|---|
+| `--mode dev\|final` | `dev` | Preset: dev=5% data/2 epochs, final=100%/15 epochs |
+| `--models MODEL ...` | all three | Pick which models to train, e.g. `--models cnn vit_pretrained` |
+| `--epochs N` | from mode | Override number of training epochs |
+| `--subset 0.0–1.0` | from mode | Override fraction of training data to use |
+| `--batch-size N` | 64 | Dataloader batch size |
+| `--skip-train` | off | Load existing checkpoints, skip training |
+| `--skip-viz` | off | Skip plots, just print the results table |
+
+### Option 2 — Notebook (Colab)
+
+Open `notebooks/main.ipynb`, set `USE_FULL_DATA = True`, run all cells.
+
+### Option 3 — Sanity check (~5 min, no GPU needed)
+
 ```bash
 python -m src.test_integration
 ```
-Trains all 3 models for 1 epoch on 2% of CIFAR-10, runs eval + all visualizations. If this passes, everything is wired up correctly.
 
-### Full experiment (notebook)
-Open `notebooks/main.ipynb`, set `USE_FULL_DATA = True`, and run all cells top to bottom.
-
-### Full experiment (script)
-```python
-from src.data import get_dataloaders, CIFAR10_CLASSES
-from src.models import build_model
-from src.train import get_device, train_model, load_checkpoint, FINAL_CONFIG
-from src.evaluate import build_results_table, print_results_table
-
-device  = get_device()
-loaders = get_dataloaders(subset_fraction=1.0, image_size=224, batch_size=64)
-
-# Train all 3 models
-for name in ["vit_scratch", "cnn", "vit_pretrained"]:
-    model = build_model(name).to(device)
-    train_model(name, model, loaders, device, **FINAL_CONFIG)
-
-# Compare results
-models = {n: load_checkpoint(build_model(n).to(device), n, device)
-          for n in ["vit_scratch", "cnn", "vit_pretrained"]}
-rows = build_results_table(models, loaders["test"], device, CIFAR10_CLASSES)
-print_results_table(rows)
-```
-
-> For a fast dev run: swap `subset_fraction=1.0` → `0.05` and `FINAL_CONFIG` → `DEV_CONFIG`.
+Trains all 3 models for 1 epoch on 2% of CIFAR-10, runs eval + all visualizations end-to-end.
 
 ---
 
