@@ -1,7 +1,7 @@
 <h1 align="center">Data-Efficient Vision Transformers for Small Image Datasets</h1>
 
 <p align="center">
-  Comparing ViT vs CNN on CIFAR-10 — does a Transformer beat a CNN when data is scarce?
+  Comparing ViT vs CNN on CIFAR-10 — does a Transformer beat a CNN when data is scarce?.
 </p>
 
 <p align="center">
