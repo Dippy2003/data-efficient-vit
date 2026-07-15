@@ -28,7 +28,7 @@ We train and compare **3 models** on CIFAR-10 (60,000 images, 10 classes):
 | ResNet-18 (CNN) | Random | Mid — convolutional priors help even with little data |
 | ViT-Tiny (pretrained) | ImageNet weights | Best — pretraining gives it what data can't |
 
-**The story: `vit_scratch` < `cnn` < `vit_pretrained`** — and the gap widens as data gets smaller.
+**The story: `vit_scratch` < `cnn` < `vit_pretrained`** — and the gap widens as data gets smaller
 
 ---
 
