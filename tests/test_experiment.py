@@ -19,6 +19,13 @@ class ExperimentTests(unittest.TestCase):
             self.assertTrue(Path(path).is_file())
             self.assertIn('"run_id": "test"', Path(path).read_text(encoding="utf-8"))
 
+    def test_repeated_run_ids_do_not_overwrite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            first = save_run_record({"run_id": "repeat"}, directory)
+            second = save_run_record({"run_id": "repeat"}, directory)
+            self.assertNotEqual(first, second)
+            self.assertTrue(Path(first).exists() and Path(second).exists())
+
 
 if __name__ == "__main__":
     unittest.main()
