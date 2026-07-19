@@ -236,7 +236,8 @@ def save_history(history: dict, model_name: str, history_dir: str = "outputs/his
     return path
 
 
-def save_checkpoint(model: nn.Module, model_name: str, checkpoint_dir: str = "outputs/checkpoints") -> str:
+def save_checkpoint(model: nn.Module, model_name: str, checkpoint_dir: str = "outputs/checkpoints",
+                    metadata: dict = None) -> str:
     """
     Save the model's weights to disk.
 
@@ -259,7 +260,8 @@ def save_checkpoint(model: nn.Module, model_name: str, checkpoint_dir: str = "ou
     """
     os.makedirs(checkpoint_dir, exist_ok=True)
     path = os.path.join(checkpoint_dir, f"{model_name}_best.pth")
-    torch.save(model.state_dict(), path)
+    payload = {"state_dict": model.state_dict(), "metadata": metadata or {}}
+    torch.save(payload, path)
     return path
 
 
@@ -286,7 +288,9 @@ def load_checkpoint(model: nn.Module, model_name: str, device, checkpoint_dir: s
     nn.Module : the same `model`, with weights loaded, moved to `device`.
     """
     path = os.path.join(checkpoint_dir, f"{model_name}_best.pth")
-    state_dict = torch.load(path, map_location=device)
+    payload = torch.load(path, map_location=device)
+    # Backward compatible with checkpoints created before metadata support.
+    state_dict = payload.get("state_dict", payload) if isinstance(payload, dict) else payload
     model.load_state_dict(state_dict)
     return model.to(device)
 
@@ -346,7 +350,10 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5) ->
 
         if val_result["accuracy"] > best_val_acc:
             best_val_acc = val_result["accuracy"]
-            checkpoint_path = save_checkpoint(model, model_name)
+            checkpoint_path = save_checkpoint(
+                model, model_name,
+                metadata={"epoch": epoch, "val_accuracy": best_val_acc},
+            )
             print(f"[{model_name}] new best val_acc={best_val_acc:.4f}, saved to {checkpoint_path}")
 
     history_path = save_history(history, model_name)
