@@ -137,6 +137,25 @@ python -m src.run_experiment --skip-train --skip-viz
 
 All outputs (figures, checkpoints, history JSON, results table) are saved to `outputs/` automatically.
 
+### Run the data-efficiency study
+
+The study command repeats every model across multiple data fractions and
+random seeds, then reports mean ± standard deviation and produces an accuracy
+versus data-size plot:
+
+```bash
+python -m src.run_study
+
+# Smaller custom study
+python -m src.run_study --fractions 0.05 0.1 --seeds 42 123 --epochs 5
+
+# Continue an interrupted study without retraining completed conditions
+python -m src.run_study --skip-existing
+```
+
+Study artifacts are isolated under `outputs/studies/`. Summary JSON, raw CSV,
+and `data_efficiency.png` are generated when the study finishes.
+
 ---
 
 ## Project structure
