@@ -82,6 +82,8 @@ def parse_args():
         help="Dataloader batch size (default: 64)",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    parser.add_argument("--patience", type=int, default=0,
+                        help="Early-stopping patience; 0 disables it")
     parser.add_argument(
         "--skip-train",
         action="store_true",
@@ -115,6 +117,9 @@ def resolve_config(args):
     if cfg["batch_size"] < 1:
         parser_error("--batch-size must be at least 1")
     cfg["seed"]       = args.seed
+    cfg["patience"]   = args.patience
+    if cfg["patience"] < 0:
+        parser_error("--patience cannot be negative")
     cfg["skip_train"] = args.skip_train
     cfg["skip_viz"]   = args.skip_viz
     return cfg
@@ -138,6 +143,7 @@ def print_config(cfg, device):
     print(f"  Epochs          : {cfg['num_epochs']}")
     print(f"  Batch size      : {cfg['batch_size']}")
     print(f"  Random seed     : {cfg['seed']}")
+    print(f"  Early stopping  : {cfg['patience'] or 'disabled'}")
     print(f"  Skip training   : {cfg['skip_train']}")
     print(f"  Skip viz        : {cfg['skip_viz']}")
     print(f"{bar}\n")
@@ -155,7 +161,8 @@ def run_training(cfg, loaders, device):
         print(f"{'='*55}")
         t0 = time.time()
         model = build_model(name, num_classes=10, img_size=224).to(device)
-        train_model(name, model, loaders, device, num_epochs=cfg["num_epochs"])
+        train_model(name, model, loaders, device, num_epochs=cfg["num_epochs"],
+                    patience=cfg["patience"])
         model = load_checkpoint(model, name, device)
         elapsed = time.time() - t0
         print(f"  Done in {elapsed/60:.1f} min")
