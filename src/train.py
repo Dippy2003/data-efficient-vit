@@ -72,6 +72,9 @@ def get_device() -> torch.device:
     if torch.cuda.is_available():
         device = torch.device("cuda")
         print(f"[train] Using GPU: {torch.cuda.get_device_name(0)}")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = torch.device("mps")
+        print("[train] Using Apple Metal GPU (MPS)")
     else:
         device = torch.device("cpu")
         print("[train] WARNING: No GPU found, training on CPU. This will be "
