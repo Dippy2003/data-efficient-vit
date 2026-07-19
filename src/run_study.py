@@ -104,6 +104,11 @@ def main() -> None:
     (output / "study_results.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     summary = aggregate_results(rows)
     (output / "study_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    with (output / "study_summary.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(summary[0]) if summary else [])
+        if summary:
+            writer.writeheader()
+            writer.writerows(summary)
     from src.visualize import plot_data_efficiency
     plot_data_efficiency(summary)
     with (output / "study_results.csv").open("w", newline="", encoding="utf-8") as handle:
