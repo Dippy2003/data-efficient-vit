@@ -1,6 +1,8 @@
 """Run a data-efficiency study across data fractions and random seeds."""
 
 import argparse
+import csv
+import json
 from pathlib import Path
 
 
@@ -62,6 +64,14 @@ def main() -> None:
     for fraction in args.fractions:
         for seed in args.seeds:
             rows.extend(run_one(fraction, seed, args, device))
+    output = Path("outputs/studies")
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "study_results.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
+    with (output / "study_results.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]) if rows else [])
+        if rows:
+            writer.writeheader()
+            writer.writerows(rows)
     print(f"Completed {len(rows)} model runs.")
 
 
