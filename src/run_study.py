@@ -3,6 +3,8 @@
 import argparse
 import csv
 import json
+from collections import defaultdict
+from statistics import mean, stdev
 from pathlib import Path
 
 
@@ -54,6 +56,25 @@ def run_one(fraction: float, seed: int, args, device) -> list:
     return results
 
 
+def aggregate_results(rows: list) -> list:
+    """Calculate mean and sample standard deviation across random seeds."""
+    groups = defaultdict(list)
+    for row in rows:
+        groups[(row["model"], row["fraction"])].append(row)
+    summary = []
+    for (model, fraction), values in sorted(groups.items()):
+        accuracies = [item["accuracy"] for item in values]
+        f1_scores = [item["macro_f1"] for item in values]
+        summary.append({
+            "model": model, "fraction": fraction, "runs": len(values),
+            "accuracy_mean": mean(accuracies),
+            "accuracy_std": stdev(accuracies) if len(accuracies) > 1 else 0.0,
+            "macro_f1_mean": mean(f1_scores),
+            "macro_f1_std": stdev(f1_scores) if len(f1_scores) > 1 else 0.0,
+        })
+    return summary
+
+
 def main() -> None:
     from src.train import get_device
 
@@ -67,6 +88,8 @@ def main() -> None:
     output = Path("outputs/studies")
     output.mkdir(parents=True, exist_ok=True)
     (output / "study_results.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
+    summary = aggregate_results(rows)
+    (output / "study_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     with (output / "study_results.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]) if rows else [])
         if rows:
