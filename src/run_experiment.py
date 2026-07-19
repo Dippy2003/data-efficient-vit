@@ -300,7 +300,8 @@ def main():
     # ── Evaluation ────────────────────────────────────────────────────────────
     rows = run_evaluation(models, loaders, device)
 
-    from src.experiment import environment_info, make_run_id, save_run_record
+    from src.experiment import (append_results_csv, environment_info,
+                                make_run_id, save_run_record)
     run_id = make_run_id(cfg)
     record_path = save_run_record({
         "run_id": run_id,
@@ -309,6 +310,7 @@ def main():
         "results": rows,
     })
     print(f"Experiment record saved to {record_path}")
+    append_results_csv(run_id, cfg, rows)
 
     # ── Visualizations ────────────────────────────────────────────────────────
     if not cfg["skip_viz"]:

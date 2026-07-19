@@ -1,6 +1,7 @@
 """Utilities for reproducible, non-overwriting experiment records."""
 
 from datetime import datetime, timezone
+import csv
 import hashlib
 import json
 import platform
@@ -35,3 +36,23 @@ def environment_info() -> dict:
         "cuda_available": torch.cuda.is_available(),
         "cuda_version": torch.version.cuda,
     }
+
+
+def append_results_csv(run_id: str, config: dict, rows: list,
+                       path: str = "outputs/results.csv") -> str:
+    """Append tidy model results for spreadsheet-friendly analysis."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fields = ["run_id", "model", "accuracy", "macro_f1", "subset_fraction", "epochs", "seed"]
+    exists = target.exists()
+    with target.open("a", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        if not exists:
+            writer.writeheader()
+        for row in rows:
+            writer.writerow({
+                "run_id": run_id, **row,
+                "subset_fraction": config["subset_fraction"],
+                "epochs": config["num_epochs"], "seed": config["seed"],
+            })
+    return str(target)
