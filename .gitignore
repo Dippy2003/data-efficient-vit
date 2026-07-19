@@ -18,6 +18,9 @@ outputs/checkpoints/*.pth
 outputs/figures/*.png
 outputs/history/*.json
 outputs/results_table.txt
+outputs/results.csv
+outputs/runs/
+outputs/studies/
 
 # OS / editor cruft
 .DS_Store
