@@ -146,7 +146,7 @@ def print_config(cfg, device):
 def run_training(cfg, loaders, device):
     """Train each requested model and return a dict of trained models."""
     from src.models import build_model
-    from src.train  import train_model
+    from src.train  import load_checkpoint, train_model
 
     trained = {}
     for name in cfg["models"]:
@@ -156,6 +156,7 @@ def run_training(cfg, loaders, device):
         t0 = time.time()
         model = build_model(name, num_classes=10, img_size=224).to(device)
         train_model(name, model, loaders, device, num_epochs=cfg["num_epochs"])
+        model = load_checkpoint(model, name, device)
         elapsed = time.time() - t0
         print(f"  Done in {elapsed/60:.1f} min")
         trained[name] = model
