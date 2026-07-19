@@ -81,6 +81,7 @@ def parse_args():
         dest="batch_size",
         help="Dataloader batch size (default: 64)",
     )
+    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
     parser.add_argument(
         "--skip-train",
         action="store_true",
@@ -110,6 +111,7 @@ def resolve_config(args):
         cfg["subset_fraction"] = args.subset
     cfg["models"]     = args.models or ALL_MODELS
     cfg["batch_size"] = args.batch_size
+    cfg["seed"]       = args.seed
     cfg["skip_train"] = args.skip_train
     cfg["skip_viz"]   = args.skip_viz
     return cfg
@@ -126,6 +128,7 @@ def print_config(cfg, device):
     print(f"  Subset fraction : {cfg['subset_fraction']:.0%} of CIFAR-10 training set")
     print(f"  Epochs          : {cfg['num_epochs']}")
     print(f"  Batch size      : {cfg['batch_size']}")
+    print(f"  Random seed     : {cfg['seed']}")
     print(f"  Skip training   : {cfg['skip_train']}")
     print(f"  Skip viz        : {cfg['skip_viz']}")
     print(f"{bar}\n")
@@ -245,8 +248,9 @@ def main():
     cfg    = resolve_config(args)
 
     from src.data  import get_dataloaders
-    from src.train import get_device
+    from src.train import get_device, set_seed
 
+    set_seed(cfg["seed"])
     device = get_device()
     print_config(cfg, device)
 
@@ -257,6 +261,7 @@ def main():
         image_size      = 224,
         batch_size      = cfg["batch_size"],
         subset_fraction = cfg["subset_fraction"],
+        seed            = cfg["seed"],
         num_workers     = 0,
     )
     print(f"      Train: {len(loaders['train'].dataset)}  "
