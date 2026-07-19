@@ -122,6 +122,17 @@ def compute_accuracy(model, loader, device) -> float:
     return float((y_true == y_pred).mean())
 
 
+def compute_per_class_accuracy(model, loader, device, class_names=None) -> dict:
+    """Return accuracy for each class, including classes with zero correct."""
+    y_true, y_pred = collect_predictions(model, loader, device)
+    labels = sorted(np.unique(y_true).tolist())
+    names = class_names or [str(label) for label in labels]
+    return {
+        names[label]: float((y_pred[y_true == label] == label).mean())
+        for label in labels
+    }
+
+
 def build_results_table(models_dict: dict, loader, device, class_names=None) -> list:
     """
     Evaluate every model in `models_dict` on `loader` and return a list of
