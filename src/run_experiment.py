@@ -103,18 +103,27 @@ def resolve_config(args):
     }
     cfg = presets[args.mode].copy()
     if args.epochs is not None:
+        if args.epochs < 1:
+            parser_error("--epochs must be at least 1")
         cfg["num_epochs"] = args.epochs
     if args.subset is not None:
         if not (0 < args.subset <= 1.0):
-            print(f"[error] --subset must be between 0 and 1.0, got {args.subset}")
-            sys.exit(1)
+            parser_error(f"--subset must be between 0 and 1.0, got {args.subset}")
         cfg["subset_fraction"] = args.subset
     cfg["models"]     = args.models or ALL_MODELS
     cfg["batch_size"] = args.batch_size
+    if cfg["batch_size"] < 1:
+        parser_error("--batch-size must be at least 1")
     cfg["seed"]       = args.seed
     cfg["skip_train"] = args.skip_train
     cfg["skip_viz"]   = args.skip_viz
     return cfg
+
+
+def parser_error(message: str) -> None:
+    """Print a consistent command-line validation error and exit."""
+    print(f"[error] {message}")
+    raise SystemExit(2)
 
 
 def print_config(cfg, device):
