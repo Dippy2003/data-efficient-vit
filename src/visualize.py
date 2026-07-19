@@ -378,3 +378,27 @@ def plot_sample_predictions(model, loader, device, class_names,
     plt.close(fig)
     print(f"[visualize] saved sample predictions to {save_path}")
     return save_path
+
+
+def plot_data_efficiency(summary: list,
+                         save_path: str = "outputs/studies/data_efficiency.png") -> str:
+    """Plot mean test accuracy against training-set fraction with error bars."""
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    model_names = sorted({row["model"] for row in summary})
+    for name in model_names:
+        points = sorted((row for row in summary if row["model"] == name),
+                        key=lambda row: row["fraction"])
+        ax.errorbar([row["fraction"] * 100 for row in points],
+                    [row["accuracy_mean"] * 100 for row in points],
+                    yerr=[row["accuracy_std"] * 100 for row in points],
+                    marker="o", capsize=3, label=name,
+                    color=MODEL_COLORS.get(name))
+    ax.set(xlabel="CIFAR-10 training data used (%)", ylabel="Test accuracy (%)",
+           title="Data efficiency by model")
+    ax.grid(alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return save_path
