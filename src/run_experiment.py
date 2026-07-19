@@ -208,6 +208,7 @@ def run_evaluation(models, loaders, device):
     for name, model in models.items():
         print(f"\n-- {name} --")
         print(per_class_report(model, loaders["test"], device, CIFAR10_CLASSES))
+    return rows
 
 
 def run_visualizations(models, loaders, device):
@@ -297,7 +298,17 @@ def main():
         sys.exit(1)
 
     # ── Evaluation ────────────────────────────────────────────────────────────
-    run_evaluation(models, loaders, device)
+    rows = run_evaluation(models, loaders, device)
+
+    from src.experiment import environment_info, make_run_id, save_run_record
+    run_id = make_run_id(cfg)
+    record_path = save_run_record({
+        "run_id": run_id,
+        "config": cfg,
+        "environment": environment_info(),
+        "results": rows,
+    })
+    print(f"Experiment record saved to {record_path}")
 
     # ── Visualizations ────────────────────────────────────────────────────────
     if not cfg["skip_viz"]:
