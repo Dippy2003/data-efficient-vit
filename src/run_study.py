@@ -23,6 +23,8 @@ def parse_args():
     parser.add_argument("--patience", type=int, default=3)
     parser.add_argument("--skip-existing", action="store_true",
                         help="Reuse completed checkpoints when resuming a study")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Validate and print the study matrix without training")
     return parser.parse_args()
 
 
@@ -85,6 +87,13 @@ def main() -> None:
 
     args = parse_args()
     validate_args(args)
+    conditions = len(args.fractions) * len(args.seeds) * len(args.models)
+    print(f"Study matrix: {conditions} model runs")
+    if args.dry_run:
+        for fraction in args.fractions:
+            for seed in args.seeds:
+                print(f"  fraction={fraction:g} seed={seed} models={','.join(args.models)}")
+        return
     device = get_device()
     rows = []
     for fraction in args.fractions:
