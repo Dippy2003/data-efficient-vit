@@ -21,6 +21,8 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--patience", type=int, default=3)
+    parser.add_argument("--skip-existing", action="store_true",
+                        help="Reuse completed checkpoints when resuming a study")
     return parser.parse_args()
 
 
@@ -48,8 +50,11 @@ def run_one(fraction: float, seed: int, args, device) -> list:
     results = []
     for name in args.models:
         model = build_model(name).to(device)
-        train_model(name, model, loaders, device, args.epochs, args.patience,
-                    str(root / "checkpoints"), str(root / "history"))
+        checkpoint_dir = root / "checkpoints"
+        checkpoint = checkpoint_dir / f"{name}_best.pth"
+        if not (args.skip_existing and checkpoint.exists()):
+            train_model(name, model, loaders, device, args.epochs, args.patience,
+                        str(checkpoint_dir), str(root / "history"))
         model = load_checkpoint(model, name, device, str(root / "checkpoints"))
         row = build_results_table({name: model}, loaders["test"], device)[0]
         results.append({**row, "fraction": fraction, "seed": seed})
