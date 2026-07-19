@@ -155,7 +155,9 @@ def build_results_table(models_dict: dict, loader, device, class_names=None) -> 
         y_true, y_pred = collect_predictions(model, loader, device)
         acc = float((y_true == y_pred).mean())
         macro_f1 = float(f1_score(y_true, y_pred, average="macro"))
-        rows.append({"model": name, "accuracy": acc, "macro_f1": macro_f1})
+        params = sum(p.numel() for p in model.parameters())
+        rows.append({"model": name, "accuracy": acc, "macro_f1": macro_f1,
+                     "parameters": params})
         print(f"[results] {name}: accuracy={acc:.4f} macro_f1={macro_f1:.4f}")
 
     return rows
@@ -171,13 +173,14 @@ def print_results_table(rows: list, save_path: str = "outputs/results_table.txt"
     rows : list of dicts (output of build_results_table())
     save_path : str  path to save the table; directory created if needed.
     """
-    header = f"{'Model':<20} {'Accuracy':>10} {'Macro F1':>10}"
+    header = f"{'Model':<20} {'Accuracy':>10} {'Macro F1':>10} {'Params':>12}"
     sep = "-" * len(header)
     lines = [sep, header, sep]
 
     for row in rows:
         lines.append(
-            f"{row['model']:<20} {row['accuracy']:>10.4f} {row['macro_f1']:>10.4f}"
+            f"{row['model']:<20} {row['accuracy']:>10.4f} {row['macro_f1']:>10.4f} "
+            f"{row.get('parameters', 0):>12,}"
         )
     lines.append(sep)
     table_str = "\n".join(lines)
