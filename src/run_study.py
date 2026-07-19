@@ -1,6 +1,7 @@
 """Run a data-efficiency study across data fractions and random seeds."""
 
 import argparse
+from pathlib import Path
 
 
 DEFAULT_FRACTIONS = [0.01, 0.05, 0.1, 0.25, 0.5, 1.0]
@@ -28,5 +29,41 @@ def validate_args(args) -> None:
         raise SystemExit("Epochs/batch size must be positive and patience non-negative.")
 
 
+def run_one(fraction: float, seed: int, args, device) -> list:
+    """Train and evaluate all requested models for one study condition."""
+    from src.data import get_dataloaders
+    from src.evaluate import build_results_table
+    from src.models import build_model
+    from src.train import load_checkpoint, set_seed, train_model
+
+    set_seed(seed)
+    loaders = get_dataloaders(subset_fraction=fraction, batch_size=args.batch_size,
+                              num_workers=0, seed=seed)
+    condition = f"fraction_{fraction:g}/seed_{seed}"
+    root = Path("outputs/studies") / condition
+    results = []
+    for name in args.models:
+        model = build_model(name).to(device)
+        train_model(name, model, loaders, device, args.epochs, args.patience,
+                    str(root / "checkpoints"), str(root / "history"))
+        model = load_checkpoint(model, name, device, str(root / "checkpoints"))
+        row = build_results_table({name: model}, loaders["test"], device)[0]
+        results.append({**row, "fraction": fraction, "seed": seed})
+    return results
+
+
+def main() -> None:
+    from src.train import get_device
+
+    args = parse_args()
+    validate_args(args)
+    device = get_device()
+    rows = []
+    for fraction in args.fractions:
+        for seed in args.seeds:
+            rows.extend(run_one(fraction, seed, args, device))
+    print(f"Completed {len(rows)} model runs.")
+
+
 if __name__ == "__main__":
-    validate_args(parse_args())
+    main()
