@@ -133,6 +133,23 @@ def compute_per_class_accuracy(model, loader, device, class_names=None) -> dict:
     }
 
 
+@torch.no_grad()
+def collect_confident_errors(model, loader, device, limit: int = 20) -> list:
+    """Collect the most confident mistakes for qualitative error analysis."""
+    model.eval()
+    errors = []
+    offset = 0
+    for images, labels in loader:
+        probabilities = torch.softmax(model(images.to(device)), dim=1).cpu()
+        confidence, predictions = probabilities.max(dim=1)
+        for index, (truth, pred, score) in enumerate(zip(labels, predictions, confidence)):
+            if truth.item() != pred.item():
+                errors.append({"index": offset + index, "true": truth.item(),
+                               "predicted": pred.item(), "confidence": score.item()})
+        offset += len(labels)
+    return sorted(errors, key=lambda item: item["confidence"], reverse=True)[:limit]
+
+
 def build_results_table(models_dict: dict, loader, device, class_names=None) -> list:
     """
     Evaluate every model in `models_dict` on `loader` and return a list of
