@@ -332,7 +332,9 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5,
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
 
     history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
-    best_val_acc = 0.0
+    # Negative infinity guarantees that epoch 1 always creates a checkpoint,
+    # even when a tiny or difficult validation split scores exactly zero.
+    best_val_acc = float("-inf")
     epochs_without_improvement = 0
 
     for epoch in range(1, num_epochs + 1):
