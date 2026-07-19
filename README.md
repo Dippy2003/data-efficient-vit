@@ -211,6 +211,10 @@ python -m src.run_experiment --mode final
 
 `src/run_experiment.py` handles data loading, training, evaluation, and all visualizations in one shot. All outputs go to `outputs/` automatically.
 
+Each run also writes a timestamped JSON record under `outputs/runs/` and
+appends a tidy row per model to `outputs/results.csv`. These records include
+the configuration, software environment, metrics, and parameter counts.
+
 **All CLI flags:**
 
 | Flag | Default | What it does |
@@ -220,6 +224,8 @@ python -m src.run_experiment --mode final
 | `--epochs N` | from mode | Override number of training epochs |
 | `--subset 0.0–1.0` | from mode | Override fraction of training data to use |
 | `--batch-size N` | 64 | Dataloader batch size |
+| `--seed N` | 42 | Seed Python, NumPy, data splits, and PyTorch |
+| `--patience N` | 0 | Stop after N unimproved validation epochs; 0 disables |
 | `--skip-train` | off | Load existing checkpoints, skip training |
 | `--skip-viz` | off | Skip plots, just print the results table |
 
