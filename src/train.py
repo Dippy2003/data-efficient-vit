@@ -296,7 +296,8 @@ def load_checkpoint(model: nn.Module, model_name: str, device, checkpoint_dir: s
 
 
 def train_model(model_name: str, model, loaders, device, num_epochs: int = 5,
-                patience: int = 0) -> dict:
+                patience: int = 0, checkpoint_dir: str = "outputs/checkpoints",
+                history_dir: str = "outputs/history") -> dict:
     """
     Full training loop: runs `num_epochs` epochs, evaluating on the
     validation set after each one, and prints progress.
@@ -353,7 +354,7 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5,
         if val_result["accuracy"] > best_val_acc:
             best_val_acc = val_result["accuracy"]
             checkpoint_path = save_checkpoint(
-                model, model_name,
+                model, model_name, checkpoint_dir=checkpoint_dir,
                 metadata={"epoch": epoch, "val_accuracy": best_val_acc},
             )
             print(f"[{model_name}] new best val_acc={best_val_acc:.4f}, saved to {checkpoint_path}")
@@ -364,7 +365,7 @@ def train_model(model_name: str, model, loaders, device, num_epochs: int = 5,
                 print(f"[{model_name}] early stopping after {epoch} epochs")
                 break
 
-    history_path = save_history(history, model_name)
+    history_path = save_history(history, model_name, history_dir=history_dir)
     print(f"[{model_name}] training history saved to {history_path}")
 
     return history
