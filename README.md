@@ -149,6 +149,9 @@ python -m src.run_study
 # Smaller custom study
 python -m src.run_study --fractions 0.05 0.1 --seeds 42 123 --epochs 5
 
+# Preview the complete run matrix without downloading data or training
+python -m src.run_study --dry-run
+
 # Continue an interrupted study without retraining completed conditions
 python -m src.run_study --skip-existing
 ```
