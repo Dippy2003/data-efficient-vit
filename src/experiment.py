@@ -23,6 +23,10 @@ def save_run_record(record: dict, output_dir: str = "outputs/runs") -> str:
     run_id = record.get("run_id") or make_run_id(record.get("config", {}))
     path = Path(output_dir) / f"{run_id}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
+    suffix = 2
+    while path.exists():
+        path = Path(output_dir) / f"{run_id}-{suffix}.json"
+        suffix += 1
     path.write_text(json.dumps({**record, "run_id": run_id}, indent=2), encoding="utf-8")
     return str(path)
 
